@@ -23,21 +23,26 @@ def findCircles(img):
             cv2.rectangle(img, (x - 5, y - 5), (x + 5, y + 5), (255, 0, 0), -1)
             radius = r
             center = (x,y)
-        cv2.imshow("circles",img)
-        imgSize = (radius,360)
-        polarImg = cv2.warpPolar(img,imgSize,center,radius,flags=0)
-        cv2.imshow("polar",polarImg)
+        return img,center,radius
     else:
         print("no clock detected !")
 
 
+def createPolar(img,center,radius):
+    imgSize = (radius,360)
+    polarImg = cv2.warpPolar(img,imgSize,center,radius,flags=0)
+    return polarImg
 
 if __name__ == "__main__":
     img = cv2.imread("images/mondaine.jpg")
     img = resize(img,700)
     cv2.imshow("base",img)
-    findCircles(img)
 
+    img,center,radius = findCircles(img)
+    cv2.imshow("circles",img)
+
+    imgPolar = createPolar(img,center,radius)
+    cv2.imshow("polar",imgPolar)
 
 
     cv2.waitKey()
