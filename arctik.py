@@ -34,7 +34,7 @@ def createPolar(img,center,radius):
     polarImg = cv2.warpPolar(img,imgSize,center,radius,flags=0)
     return polarImg
 
-def isolateClockHand(img):
+def findClockHand(img):
     # resize 64 - 171
     croppedImage = img[0:360,64:171]
     # Convert to grayscale
@@ -42,9 +42,9 @@ def isolateClockHand(img):
     # threshold ~25
     retval, thresh = cv2.threshold(grayscale,15,255,cv2.THRESH_BINARY)
     # isolate each clock hand using length ?
-    makeHisto(thresh)
+    return makeHisto(thresh)
     #test = imgPolar[9:10]
-    cv2.imshow("gray",thresh)
+    #cv2.imshow("gray",thresh)
 
 def makeHisto(img):
     nbLine,nbColumn  = img.shape
@@ -57,16 +57,26 @@ def makeHisto(img):
             if img[i,j] == 0:
                 histo[i] = histo[i]+1
 
-    mean = int(findMean(histo,0,nbLine))
+    mean = int(findMean(histo,0,nbLine)[0])
     histo2 = dict(list(histo.items())[mean:])
     histo1 = dict(list(histo.items())[:mean])
     #plot_histogram_from_dict(histo1)
     #plot_histogram_from_dict(histo2)
     
-    mean1 = findMean(histo1,0,mean)
-    mean2 = findMean(histo2,mean,nbLine)
+    mean1,length1 = findMean(histo1,0,mean)
+    mean2,length2 = findMean(histo2,mean,nbLine)
+    hourMean = mean1
+    minuteMean= mean2
+    print(length1)
+    print(length2)
+    if length1 > length2:
+        minuteMean = mean1
+        hourMean = mean2
+    else:
+        minuteMean = mean2
+        hourMean = mean1
+    return hourMean,minuteMean
 
-    
 
 def plot_histogram_from_dict(dict):
     plt.bar(dict.keys(), dict.values(), color='g')
@@ -78,11 +88,34 @@ def findMean(histo,start,nbLine):
     for i in range(start,nbLine):
         sumHist = sumHist + (histo[i]*i)
     mean = sumHist / sum(histo.values())
-    print(mean)
-    return mean
+    
+    length = findLength(histo,mean)
+    #print(mean)
+    return mean,length
+
+def findLength(histo,mean):
+    mean = int(mean)
+    sum=0
+    print("mean", mean)
+    print("taille de l'histo ",len(histo))
+    print("début de l'index ", list(histo.keys())[0])
+    start = list(histo.keys())[0]
+    stop = list(histo.keys())[0] + len(histo)
+    print("histogramme ",histo)
+
+    for i in range(mean-1,mean+2):
+        #print("i ",i)
+        if i >=start and i < stop: 
+            sum+=histo[i]
+        #print("s ",histo[i%len(histo) + list(histo.keys())[0]])
+        
+    length = sum / 3
+    print("----------------------------------")
+
+    return max(histo)
 
 if __name__ == "__main__":
-    img = cv2.imread("images/mondaine.jpg")
+    img = cv2.imread("images/medium.png")
     img = resize(img,700)
     #cv2.imshow("base",img)
 
@@ -92,5 +125,11 @@ if __name__ == "__main__":
     imgPolar = createPolar(img,center,radius)
     cv2.imshow("polar",imgPolar)
     cv2.imwrite("polar.jpg",imgPolar)
-    isolateClockHand(imgPolar)
+    clockHandHour, clockHandMinute = findClockHand(imgPolar)
+
+    minute =  int((clockHandMinute / 360 * 60 + 15) % 60)
+    hour= int((clockHandHour / 360 * 12 + 3) % 12)
+
+    print("Il est ",hour,"h",minute)
+
     cv2.waitKey()
