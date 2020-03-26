@@ -58,23 +58,51 @@ def makeHisto(img):
                 histo[i] = histo[i]+1
 
     mean = int(findMean(histo,0,nbLine)[0])
-    histo2 = dict(list(histo.items())[mean:])
-    histo1 = dict(list(histo.items())[:mean])
-    #plot_histogram_from_dict(histo1)
-    #plot_histogram_from_dict(histo2)
-    
-    mean1,length1 = findMean(histo1,0,mean)
-    mean2,length2 = findMean(histo2,mean,nbLine)
-    hourMean = mean1
-    minuteMean= mean2
-    print(length1)
-    print(length2)
-    if length1 > length2:
-        minuteMean = mean1
-        hourMean = mean2
-    else:
-        minuteMean = mean2
-        hourMean = mean1
+    histoBottom = dict(list(histo.items())[mean:])
+    histoTop = dict(list(histo.items())[:mean])
+    meanTop,length1 = findMean(histoTop,0,mean)
+    meanBottom,length2 = findMean(histoBottom,mean,nbLine)
+
+    histoQ1 = dict(list(histoTop.items())[:meanTop])
+    histoQ2 = dict(list(histoTop.items())[meanTop:])
+    histoQ3 = dict(list(histoBottom.items())[:meanBottom-mean])
+    histoQ4 = dict(list(histoBottom.items())[meanBottom-mean:])
+
+    meanQ1,lengthQ1 = findMean(histoQ1,0,meanTop)
+    meanQ2,lengthQ2 = findMean(histoQ2,meanTop,mean)
+    meanQ3,lengthQ3 = findMean(histoQ3,mean,meanBottom)
+    meanQ4,lengthQ4 = findMean(histoQ4,meanBottom,nbLine-1)
+
+    print("Q1 mean: ",meanQ1," length: ",lengthQ1)
+    print("Q2 mean: ",meanQ2," length: ",lengthQ2)
+    print("Q3 mean: ",meanQ3," length: ",lengthQ3)
+    print("Q4 mean: ",meanQ4," length: ",lengthQ4)
+
+    histostats =dict()
+    histostats[lengthQ1] = meanQ1
+    histostats[lengthQ2] = meanQ2
+    histostats[lengthQ3] = meanQ3
+    histostats[lengthQ4] = meanQ4
+
+    meanLength = int((lengthQ1+lengthQ2+lengthQ3+lengthQ4)/4)
+
+    hourMean = 0
+    minuteMean = 0
+    for length in histostats.items():
+        if length[0] > meanLength:
+            minuteMean = length[1]
+        else:
+            hourMean = length[1]
+
+
+    '''
+        if length1 > length2:
+            minuteMean = meanTop
+            hourMean = meanBottom
+        else:
+            minuteMean = meanBottom
+            hourMean = meanTop
+    '''
     return hourMean,minuteMean
 
 
@@ -84,38 +112,35 @@ def plot_histogram_from_dict(dict):
 
 def findMean(histo,start,nbLine):
     sumHist = 0 
-
     for i in range(start,nbLine):
         sumHist = sumHist + (histo[i]*i)
     mean = sumHist / sum(histo.values())
     
     length = findLength(histo,mean)
-    #print(mean)
-    return mean,length
+    return int(mean),length
 
 def findLength(histo,mean):
     mean = int(mean)
     sum=0
-    print("mean", mean)
-    print("taille de l'histo ",len(histo))
-    print("début de l'index ", list(histo.keys())[0])
+    #print("mean", mean)
+    #print("taille de l'histo ",len(histo))
+    #print("début de l'index ", list(histo.keys())[0])
     start = list(histo.keys())[0]
     stop = list(histo.keys())[0] + len(histo)
-    print("histogramme ",histo)
+    #print("histogramme ",histo)
 
     for i in range(mean-1,mean+2):
         #print("i ",i)
         if i >=start and i < stop: 
+            #print(histo[i])
             sum+=histo[i]
         #print("s ",histo[i%len(histo) + list(histo.keys())[0]])
         
     length = sum / 3
-    print("----------------------------------")
-
-    return max(histo)
+    return max(list(histo.values()))
 
 if __name__ == "__main__":
-    img = cv2.imread("images/medium.png")
+    img = cv2.imread("images/simple.jpg")
     img = resize(img,700)
     #cv2.imshow("base",img)
 
