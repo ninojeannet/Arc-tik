@@ -9,7 +9,7 @@ def resize(img,width):
     height = int(img.shape[0] * scale_ratio)
     dim = (width, height)
     img = cv2.resize(img,dim)
-    return img
+    return img,scale_ratio
 
 def findCircles(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -24,27 +24,41 @@ def findCircles(img):
             cv2.rectangle(img, (x - 5, y - 5), (x + 5, y + 5), (255, 0, 0), -1)
             radius = r
             center = (x,y)
+        #cv2.imshow("e",img)
         return img,center,radius
     else:
         print("no clock detected !")
 
 
+def centerClock(img,center,radius):
+    margin = 0
+    img = img[center[1]-radius-margin:center[1]+radius+margin,center[0]-radius-margin:center[0]+radius+margin]
+    img,scale_ratio = resize(img,700)
+    radius = int(radius*scale_ratio)
+    center = (radius,radius)
+    #cv2.imshow("re",img)
+
+    return img,center,radius
+
 def createPolar(img,center,radius):
     imgSize = (radius,360)
     polarImg = cv2.warpPolar(img,imgSize,center,radius,flags=0)
+    #cv2.imshow("res",polarImg)
     return polarImg
 
-def findClockHand(img):
+def findClockHand(img,radius,center):
+    #ratio = int(radius / 100 * 60)
     # resize 64 - 171
-    croppedImage = img[0:360,64:171]
+    croppedImage = img[0:360,90:220]
     # Convert to grayscale
     grayscale = cv2.cvtColor(croppedImage,cv2.COLOR_RGB2GRAY)
     # threshold ~25
     retval, thresh = cv2.threshold(grayscale,15,255,cv2.THRESH_BINARY)
     # isolate each clock hand using length ?
+    #cv2.imshow("gray",thresh)
     return makeHisto(thresh)
     #test = imgPolar[9:10]
-    #cv2.imshow("gray",thresh)
+    
 
 def makeHisto(img):
     nbLine,nbColumn  = img.shape
@@ -73,10 +87,10 @@ def makeHisto(img):
     meanQ3,lengthQ3 = findMean(histoQ3,mean,meanBottom)
     meanQ4,lengthQ4 = findMean(histoQ4,meanBottom,nbLine-1)
 
-    print("Q1 mean: ",meanQ1," length: ",lengthQ1)
-    print("Q2 mean: ",meanQ2," length: ",lengthQ2)
-    print("Q3 mean: ",meanQ3," length: ",lengthQ3)
-    print("Q4 mean: ",meanQ4," length: ",lengthQ4)
+    #print("Q1 mean: ",meanQ1," length: ",lengthQ1)
+    #print("Q2 mean: ",meanQ2," length: ",lengthQ2)
+    #print("Q3 mean: ",meanQ3," length: ",lengthQ3)
+    #print("Q4 mean: ",meanQ4," length: ",lengthQ4)
 
     histostats =dict()
     histostats[lengthQ1] = meanQ1
@@ -139,22 +153,36 @@ def findLength(histo,mean):
     length = sum / 3
     return max(list(histo.values()))
 
-if __name__ == "__main__":
-    img = cv2.imread("images/simple.jpg")
-    img = resize(img,700)
-    #cv2.imshow("base",img)
 
+## TODO prochaines étapes :
+# - Faire un gros if sale
+
+def tryEachClock():
+    import os
+    for filename in os.listdir('images/'):
+        print("heure de l'horloge",filename,":")
+        processImage(filename)
+
+def processImage(filename):
+    img = cv2.imread("images/"+filename)
+    img,scale_ratio = resize(img,700)
+    #cv2.imshow("base",img)
+    
     img,center,radius = findCircles(img)
     #cv2.imshow("circles",img)
-
+    img,center,radius = centerClock(img,center,radius)
     imgPolar = createPolar(img,center,radius)
-    cv2.imshow("polar",imgPolar)
-    cv2.imwrite("polar.jpg",imgPolar)
-    clockHandHour, clockHandMinute = findClockHand(imgPolar)
+    #cv2.imshow("polar",imgPolar)
+    #cv2.imwrite("polar.jpg",imgPolar)
+    clockHandHour, clockHandMinute = findClockHand(imgPolar,radius,center)
 
     minute =  int((clockHandMinute / 360 * 60 + 15) % 60)
     hour= int((clockHandHour / 360 * 12 + 3) % 12)
 
     print("Il est ",hour,"h",minute)
 
+if __name__ == "__main__":
+    tryEachClock()
+    #processImage("mondaine.jpg")
+    
     cv2.waitKey()
