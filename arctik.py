@@ -5,7 +5,7 @@
     HE-Arc
     05.05.2020
 '''
-
+import sys
 import cv2 as cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -204,7 +204,14 @@ def processImage(filename):
         print("Pas d'horloge détectée")
 
 if __name__ == "__main__":
-    tryEachClock()
-    #processImage("medium.png")
-
-    cv2.waitKey()
+    if(len(sys.argv[1:]) > 0):
+        for arg in sys.argv[1:]:
+            try:
+                print("heure de l'horloge {}".format(arg))
+                processImage(arg)
+                cv2.waitKey()
+            except:
+                print("Pas d'image à ce nom : {}".format(arg))
+    else:   
+        tryEachClock()
+        cv2.waitKey()
