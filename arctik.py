@@ -188,7 +188,7 @@ def processImage(filename):
     
     try:
         img,center,radius = findCircles(img)
-        cv2.imshow("circles",img)
+        #cv2.imshow("circles",img)
         img,center,radius = centerClock(img,center,radius)
         imgPolar = createPolar(img,center,radius)
 
