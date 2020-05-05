@@ -1,3 +1,11 @@
+'''
+    Projet Arc'tik
+    Nino Jeannet & Sébastien Peiris
+    Traitement d'images
+    HE-Arc
+    05.05.2020
+'''
+
 import cv2 as cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -11,6 +19,7 @@ def resize(img,width):
     img = cv2.resize(img,dim)
     return img,scale_ratio
 
+# Find the circular shapes in an image
 def findCircles(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     circles = cv2.HoughCircles(gray,cv2.HOUGH_GRADIENT,1.2,100)
@@ -27,9 +36,10 @@ def findCircles(img):
         #cv2.imshow("e",img)
         return img,center,radius
     else:
-        print("no clock detected !")
+        #print("no clock detected !")
+        return None
 
-
+# Refocus the image on the clock
 def centerClock(img,center,radius):
     margin = 0
     img = img[center[1]-radius-margin:center[1]+radius+margin,center[0]-radius-margin:center[0]+radius+margin]
@@ -40,16 +50,19 @@ def centerClock(img,center,radius):
 
     return img,center,radius
 
+# Apply a polar transformation to the clock
 def createPolar(img,center,radius):
     imgSize = (radius,360)
     polarImg = cv2.warpPolar(img,imgSize,center,radius,flags=0)
     #cv2.imshow("res",polarImg)
     return polarImg
 
+# Applies a grayscale filter on the clock. Returns an histogram with the clock's 2 hands
 def findClockHand(img,radius,center):
     #ratio = int(radius / 100 * 60)
     # resize 64 - 171
     croppedImage = img[0:360,90:220]
+    #cv2.imshow("cropped",croppedImage)
     # Convert to grayscale
     grayscale = cv2.cvtColor(croppedImage,cv2.COLOR_RGB2GRAY)
     # threshold ~25
@@ -60,6 +73,7 @@ def findClockHand(img,radius,center):
     #test = imgPolar[9:10]
     
 
+#Returns the hours hand and the minutes hand positions
 def makeHisto(img):
     nbLine,nbColumn  = img.shape
     histo = dict()
@@ -71,17 +85,20 @@ def makeHisto(img):
             if img[i,j] == 0:
                 histo[i] = histo[i]+1
 
+    # Separation by the mean of the histogram
     mean = int(findMean(histo,0,nbLine)[0])
     histoBottom = dict(list(histo.items())[mean:])
     histoTop = dict(list(histo.items())[:mean])
+
     meanTop,length1 = findMean(histoTop,0,mean)
     meanBottom,length2 = findMean(histoBottom,mean,nbLine)
 
+    # Double separation in case on hand is on the 3 mark 
     histoQ1 = dict(list(histoTop.items())[:meanTop])
     histoQ2 = dict(list(histoTop.items())[meanTop:])
     histoQ3 = dict(list(histoBottom.items())[:meanBottom-mean])
     histoQ4 = dict(list(histoBottom.items())[meanBottom-mean:])
-
+    #plot_histogram_from_dict(histoQ4)
     meanQ1,lengthQ1 = findMean(histoQ1,0,meanTop)
     meanQ2,lengthQ2 = findMean(histoQ2,meanTop,mean)
     meanQ3,lengthQ3 = findMean(histoQ3,mean,meanBottom)
@@ -100,6 +117,7 @@ def makeHisto(img):
 
     meanLength = int((lengthQ1+lengthQ2+lengthQ3+lengthQ4)/4)
 
+    # hourMean and minuteMean give us the positions of both hands
     hourMean = 0
     minuteMean = 0
     for length in histostats.items():
@@ -119,11 +137,12 @@ def makeHisto(img):
     '''
     return hourMean,minuteMean
 
-
+# Method that plots a histogram from a given dictionnary
 def plot_histogram_from_dict(dict):
     plt.bar(dict.keys(), dict.values(), color='g')
     plt.show()
 
+# Finds the mean of a histogram
 def findMean(histo,start,nbLine):
     sumHist = 0 
     for i in range(start,nbLine):
@@ -133,6 +152,7 @@ def findMean(histo,start,nbLine):
     length = findLength(histo,mean)
     return int(mean),length
 
+# Finds the length of a histogram
 def findLength(histo,mean):
     mean = int(mean)
     sum=0
@@ -153,36 +173,38 @@ def findLength(histo,mean):
     length = sum / 3
     return max(list(histo.values()))
 
-
-## TODO prochaines étapes :
-# - Faire un gros if sale
-
+# Processes every images in the "images/" repository
 def tryEachClock():
     import os
     for filename in os.listdir('images/'):
         print("heure de l'horloge",filename,":")
         processImage(filename)
 
+# Processes a given images and returns the right time if a clock is found
 def processImage(filename):
     img = cv2.imread("images/"+filename)
     img,scale_ratio = resize(img,700)
     #cv2.imshow("base",img)
     
-    img,center,radius = findCircles(img)
-    #cv2.imshow("circles",img)
-    img,center,radius = centerClock(img,center,radius)
-    imgPolar = createPolar(img,center,radius)
-    #cv2.imshow("polar",imgPolar)
-    #cv2.imwrite("polar.jpg",imgPolar)
-    clockHandHour, clockHandMinute = findClockHand(imgPolar,radius,center)
+    try:
+        img,center,radius = findCircles(img)
+        cv2.imshow("circles",img)
+        img,center,radius = centerClock(img,center,radius)
+        imgPolar = createPolar(img,center,radius)
 
-    minute =  int((clockHandMinute / 360 * 60 + 15) % 60)
-    hour= int((clockHandHour / 360 * 12 + 3) % 12)
+        #cv2.imshow("polar",imgPolar)
+        cv2.imwrite("polar.jpg",imgPolar)
+        clockHandHour, clockHandMinute = findClockHand(imgPolar,radius,center)
 
-    print("Il est ",hour,"h",minute)
+        minute =  int((clockHandMinute / 360 * 60 + 15) % 60)
+        hour= int((clockHandHour / 360 * 12 + 3) % 12)
+
+        print("Il est ",hour,"h",minute)
+    except:
+        print("Pas d'horloge détectée")
 
 if __name__ == "__main__":
     tryEachClock()
-    #processImage("mondaine.jpg")
-    
+    #processImage("medium.png")
+
     cv2.waitKey()
